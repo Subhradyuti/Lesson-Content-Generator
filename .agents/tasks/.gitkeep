@@ -1,0 +1,2 @@
+# This file ensures the .agents/tasks directory is tracked by git
+# Actual task files (investigation.md, plan.md, etc.) are gitignored

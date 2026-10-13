@@ -1,0 +1,177 @@
+# ============================================================================
+# Python
+# ============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.pyc
+*.pyo
+*.pyd
+
+# ============================================================================
+# Virtual Environments
+# ============================================================================
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ============================================================================
+# Environment Files — NEVER commit real secrets
+# ============================================================================
+.env
+.env.local
+.env.*.local
+.env.production
+*.env
+
+# Keep the example file
+!.env.example
+
+# ============================================================================
+# IDE & Editors
+# ============================================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# ============================================================================
+# Testing & Coverage
+# ============================================================================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+nosetests.xml
+test-results/
+junit.xml
+
+# ============================================================================
+# Type Checking & Linting
+# ============================================================================
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+.pytype/
+.pyre/
+.pyright/
+
+# ============================================================================
+# Database
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+lesson_generator.db
+postgres_data/
+redis_data/
+
+# Keep alembic migrations but exclude temp files
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+
+# ============================================================================
+# Docker
+# ============================================================================
+docker-compose.override.yml
+*.env.docker
+
+# ============================================================================
+# Logs & Temporary Files
+# ============================================================================
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+uvicorn.*.log
+*.out.log
+*.err.log
+
+# ============================================================================
+# OS Generated Files
+# ============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ============================================================================
+# Project Specific
+# ============================================================================
+# Generated lessons for testing (if you save them locally)
+generated_lessons/
+output/
+exports/
+
+# Local development artifacts - ignore task files but keep directory structure
+.agents/tasks/*.md
+.agents/tasks/*.txt
+.agents/tasks/*.json
+!.agents/tasks/.gitkeep
+
+# Any local configuration overrides
+config.local.yaml
+config.local.yml
+config.local.json
+
+# ============================================================================
+# Security & Secrets
+# ============================================================================
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+credentials.json
+service-account.json
+
+# ============================================================================
+# Performance & Profiling
+# ============================================================================
+*.prof
+.prof/
+profile_output.*
+
+# ============================================================================
+# Documentation Build Artifacts
+# ============================================================================
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# ============================================================================
+# Package Manager Locks (optional - uncomment if not committing)
+# ============================================================================
+# Uncomment the next line if you don't want to commit lock files
+# poetry.lock
+# Pipfile.lock

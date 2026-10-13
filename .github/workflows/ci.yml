@@ -1,0 +1,189 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master", "develop"]
+  pull_request:
+    branches: ["main", "master", "develop"]
+
+env:
+  PYTHON_VERSION: "3.12"
+  # Safe dummy values — no real secrets in CI env vars
+  GROQ_API_KEY: "test-key-not-real"
+  APP_ENV: "testing"
+  API_KEY: "test-api-key"
+  DATABASE_URL: "postgresql+psycopg://lesson_user:lesson_pass@localhost:5432/lesson_db"
+  RUBRIC_VERSION: "rag-beginner-v1"
+  PROMPT_VERSION: "v1"
+  DEFAULT_MAX_RETRIES: "2"
+  LOG_LEVEL: "WARNING"
+
+jobs:
+  # ── Job 1: Lint and format ────────────────────────────────────────────────
+  lint:
+    name: Lint & Format (Ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install Ruff
+        run: pip install ruff==0.15.10
+
+      - name: Run Ruff format check
+        run: ruff format --check .
+
+      - name: Run Ruff lint
+        run: ruff check .
+
+  # ── Job 2: Type checking ─────────────────────────────────────────────────
+  typecheck:
+    name: Type Check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install --no-deps -e . && pip install mypy==2.3.0 types-PyYAML pydantic pydantic-settings langchain langchain-groq langgraph sqlalchemy alembic prometheus-client pyyaml opentelemetry-api opentelemetry-sdk fastapi httpx
+
+      - name: Run mypy
+        run: mypy app/ --ignore-missing-imports
+
+  # ── Job 3: Unit tests ─────────────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --no-deps -e .
+          pip install pytest==8.4.2 pytest-asyncio==1.3.0 pytest-cov==5.0.0 httpx==0.28.1
+          pip install pydantic==2.13.0 pydantic-settings==2.15.0 fastapi==0.135.3
+          pip install langchain==0.3.14 langchain-core==0.3.63 langchain-groq==0.2.1
+          pip install langgraph==0.2.60 sqlalchemy==2.0.36 alembic==1.14.1
+          pip install prometheus-client==0.24.0 pyyaml opentelemetry-api==1.44.0
+          pip install opentelemetry-sdk==1.44.0 groq uvicorn
+
+      - name: Run unit tests
+        run: python -m pytest tests/unit/ -v --tb=short --cov=app --cov-report=xml
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+
+  # ── Job 4: Integration tests ──────────────────────────────────────────────
+  integration-tests:
+    name: Integration Tests (mocked)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --no-deps -e .
+          pip install pytest==8.4.2 pytest-asyncio==1.3.0 httpx==0.28.1
+          pip install pydantic==2.13.0 pydantic-settings==2.15.0 fastapi==0.135.3
+          pip install langchain==0.3.14 langchain-core==0.3.63 langchain-groq==0.2.1
+          pip install langgraph==0.2.60 sqlalchemy==2.0.36 alembic==1.14.1
+          pip install prometheus-client==0.24.0 pyyaml opentelemetry-api==1.44.0
+          pip install opentelemetry-sdk==1.44.0 groq uvicorn
+
+      - name: Run integration tests
+        run: python -m pytest tests/integration/ -v --tb=short
+
+  # ── Job 5: Security scanning ──────────────────────────────────────────────
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        run: pip-audit --requirement <(pip freeze) --skip-editable || true
+
+      - name: Check for secrets with truffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+        continue-on-error: true
+
+  # ── Job 6: Container build ────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t lesson-generator:ci .
+
+      - name: Check image exists
+        run: docker image inspect lesson-generator:ci
+
+  # ── Job 7: Live smoke test (optional, only on push with credentials) ──────
+  live-smoke-test:
+    name: Live Model Smoke Test (optional)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.RUN_LIVE_TESTS == 'true'
+    needs: [unit-tests, integration-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install --no-deps -e .
+          pip install pytest httpx pydantic pydantic-settings fastapi langchain
+          pip install langchain-core langchain-groq langgraph sqlalchemy
+          pip install prometheus-client pyyaml opentelemetry-api opentelemetry-sdk groq uvicorn
+
+      - name: Run live smoke tests
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          API_KEY: ${{ secrets.API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m pytest tests/ -v -m "live" --tb=short
+        continue-on-error: true

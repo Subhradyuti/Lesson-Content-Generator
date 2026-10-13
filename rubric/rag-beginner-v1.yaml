@@ -1,0 +1,124 @@
+# Rubric: rag-beginner-v1
+# Version: 1
+# Target audience: Class 12 graduate in India; beginner; limited English vocabulary
+# All checkpoints are MANDATORY. No partial credit. A lesson passes only when
+# every checkpoint receives PASS.
+
+version: "rag-beginner-v1"
+description: >
+  Binary pass/fail rubric for a beginner lesson on Retrieval-Augmented Generation (RAG).
+  Target learner is a Class 12 graduate from India with limited English vocabulary and no
+  prior knowledge of RAG or related AI/ML concepts.
+
+checkpoints:
+  - id: "ACC-01"
+    dimension: "Accuracy"
+    pass_condition: >
+      The explanation correctly describes what RAG is and how it works. It does not contain
+      material factual errors such as wrong definitions, incorrect step ordering, or false claims
+      about what RAG can or cannot do.
+    mandatory: true
+
+  - id: "ACC-02"
+    dimension: "Grounding"
+    pass_condition: >
+      Each material factual claim in the lesson is enumerated and labelled as one of:
+      [reference-supported] (confirmed against supplied references),
+      [widely-accepted-concept] (general RAG concepts accepted across the field), or
+      [unverified-specific-claim] (specific details that need a source).
+      When reference material is supplied, claims not found in it must be flagged.
+      When no reference material is supplied, any [unverified-specific-claim]
+      (e.g., specific numbers, named outputs, dimensions, statistics) causes FAIL.
+      "All claims are consistent with common knowledge" is NOT sufficient evidence.
+    mandatory: true
+
+  - id: "BEG-01"
+    dimension: "Beginner language"
+    pass_condition: >
+      The lesson assumes no prior knowledge of RAG, embeddings, vectors, or language models.
+      It uses short, simple sentences and familiar analogies appropriate for a Class 12 graduate
+      with limited English vocabulary.
+    mandatory: true
+
+  - id: "JAR-01"
+    dimension: "Jargon"
+    pass_condition: >
+      Every essential technical term (e.g., RAG, LLM, embedding, vector, retrieval, chunk,
+      context window, hallucination) is explained in plain language at or before its first use.
+      No term is left unexplained and assumed as prior knowledge.
+    mandatory: true
+
+  - id: "EX-01"
+    dimension: "Worked example"
+    pass_condition: >
+      A concrete, step-by-step example is provided that demonstrates the RAG process end-to-end
+      (e.g., a question being answered using retrieved documents). The example must show the
+      steps clearly, not merely name the process.
+    mandatory: true
+
+  - id: "COV-01"
+    dimension: "Definition"
+    pass_condition: >
+      The lesson clearly states what RAG (Retrieval-Augmented Generation) means, including
+      what retrieval and generation each refer to. The definition is accessible to a beginner.
+    mandatory: true
+
+  - id: "COV-02"
+    dimension: "Purpose"
+    pass_condition: >
+      The lesson explains why RAG exists — what problem it solves (e.g., LLMs lacking current
+      or specific information) and why that matters to a learner or practitioner.
+    mandatory: true
+
+  - id: "COV-03"
+    dimension: "Process"
+    pass_condition: >
+      The lesson explains the main RAG workflow in a logical sequence covering at minimum:
+      document preparation/chunking, embedding, vector search/retrieval, context construction,
+      and generation. Steps are presented in the correct order.
+    mandatory: true
+
+  - id: "COV-04"
+    dimension: "Limitations"
+    pass_condition: >
+      The lesson honestly explains important limitations of RAG, including that retrieval may
+      return irrelevant documents, that the LLM may still generate incorrect answers, and that
+      RAG does not guarantee factual correctness or eliminate hallucinations.
+    mandatory: true
+
+  - id: "FLOW-01"
+    dimension: "Teaching order"
+    pass_condition: >
+      The lesson moves from simple to more complex ideas without unexplained jumps. Concepts
+      that depend on prior concepts are introduced after the concepts they build on.
+    mandatory: true
+
+  - id: "FLOW-02"
+    dimension: "Standalone"
+    pass_condition: >
+      A learner can understand the lesson without needing to follow any external link or read
+      another document first. All necessary context is provided within the lesson itself.
+    mandatory: true
+
+  - id: "CHECK-01"
+    dimension: "Learning check"
+    pass_condition: >
+      The lesson includes between 3 and 5 comprehension questions (inclusive). Each question
+      has a correct, specific answer provided in an answer key or answers section. The answers
+      must be consistent with the lesson content.
+    mandatory: true
+
+  - id: "CONS-01"
+    dimension: "Internal consistency"
+    pass_condition: >
+      Definitions, examples, steps, and the recap do not contradict one another. Terms are
+      used consistently throughout the lesson.
+    mandatory: true
+
+  - id: "SAFE-01"
+    dimension: "Safe content"
+    pass_condition: >
+      The lesson contains no harmful instructions, no private personal data, and no fabricated
+      citations or invented references. Claims are grounded in the lesson content, not
+      in invented authority.
+    mandatory: true

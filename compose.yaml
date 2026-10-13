@@ -1,0 +1,50 @@
+name: lesson-generator
+
+# Using SQLite for local development — no database server required.
+# To switch to PostgreSQL, uncomment the db service below and update
+# DATABASE_URL in your .env file.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Mount a host directory so the SQLite file persists across container restarts
+      - sqlite_data:/app/data
+    environment:
+      DATABASE_URL: sqlite:////app/data/lesson_generator.db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── PostgreSQL (optional — uncomment to use instead of SQLite) ────────────
+  # db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: lesson_db
+  #     POSTGRES_USER: lesson_user
+  #     POSTGRES_PASSWORD: lesson_pass
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U lesson_user -d lesson_db"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 10s
+
+volumes:
+  sqlite_data:
+  # postgres_data:
