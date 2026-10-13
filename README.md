@@ -1,53 +1,232 @@
 # Self-Evaluating Lesson Content Generator
 
-A production-oriented agentic system that generates beginner-friendly lessons, evaluates them against a strict binary rubric, revises them when they fail, and stores a full audit trail of every draft and evaluation decision.
+An agentic system that autonomously generates, evaluates, and refines educational content for beginners. The system uses three specialized AI agents working in a bounded workflow loop: a **Planner** creates the lesson structure, a **Generator** writes the content, and an **Evaluator** validates it against 14 strict quality checkpoints. Failed lessons trigger automatic revision with targeted feedback until quality standards are met or retry limits are reached.
 
-Built with **LangGraph**, **FastAPI**, **Groq**, and **PostgreSQL**.
+**Built with:** LangGraph · FastAPI · Groq API · SQLite/PostgreSQL · Python 3.11+
+
+---
+
+## 🚀 Quick Start (5 Minutes)
+
+```bash
+# 1. Clone and enter the project
+git clone https://github.com/Subhradyuti/Lesson-Content-Generator.git
+cd Lesson-Content-Generator
+
+# 2. Set up Python environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1  # Windows; use `source .venv/bin/activate` on Linux/macOS
+
+# 3. Install dependencies
+pip install -e .
+
+# 4. Configure your Groq API key
+cp .env.example .env
+# Edit .env and add: GROQ_API_KEY=your_groq_api_key_here
+
+# 5. Start the server
+uvicorn app.main:app --reload
+```
+
+**✅ API is now running at http://localhost:8000**
+
+Visit http://localhost:8000/docs for interactive API documentation.
+
+### Generate Your First Lesson
+
+```bash
+curl -X POST http://localhost:8000/v1/lessons \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Introduction to RAG",
+    "learner_profile": "Class 12 graduate; beginner; limited English vocabulary",
+    "language": "simple English",
+    "max_retries": 2
+  }'
+```
+
+---
+
+## 📚 Table of Contents
+
+- [Agentic Workflow Architecture](#-agentic-workflow-architecture)
+- [Architecture and Data Flow](#architecture-and-data-flow)
+- [Installation and Setup](#installation-and-setup)
+- [Environment Variables](#environment-variables)
+- [Usage Examples](#usage-examples)
+- [How the Binary Rubric Works](#how-the-binary-rubric-works)
+- [Testing](#running-tests)
+- [Observability](#observability)
+- [Security Considerations](#security-considerations)
+
+---
+
+## 🤖 Agentic Workflow Architecture
+
+### Three Specialized Agents
+
+The system employs three distinct AI agents, each with a dedicated role and prompt:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         AGENTIC WORKFLOW                             │
+└─────────────────────────────────────────────────────────────────────┘
+
+  📝 PLANNER AGENT (planner_v1.md)
+  ├─ Role: Educational planning expert
+  ├─ Input: Topic, learner profile, objectives
+  └─ Output: Structured lesson plan
+       ├─ Learning objectives (3-5)
+       ├─ Prerequisites
+       ├─ Key concepts
+       ├─ Teaching order
+       ├─ Worked example design
+       └─ Common misconceptions
+
+         ↓
+
+  ✍️ GENERATOR AGENT (generator_v1.md)
+  ├─ Role: Content writer for beginners
+  ├─ Input: Lesson plan + (optional) revision instructions
+  └─ Output: Complete lesson markdown
+       ├─ Title & objectives
+       ├─ Definition & purpose
+       ├─ Step-by-step process
+       ├─ Worked example
+       ├─ Key terms glossary
+       ├─ Common misconceptions
+       ├─ Recap
+       └─ 3-5 comprehension questions + answers
+
+         ↓
+
+  🔍 EVALUATOR AGENT (evaluator_v1.md)
+  ├─ Role: Strict quality reviewer
+  ├─ Input: Generated lesson + rubric (14 checkpoints)
+  └─ Output: Binary evaluation (PASS/FAIL per checkpoint)
+       ├─ Checkpoint ID
+       ├─ Status (PASS or FAIL)
+       ├─ Evidence from lesson
+       ├─ Reason for decision
+       └─ Required fix (if FAIL)
+
+         ↓
+
+  🎯 QUALITY GATE (application logic, not LLM)
+  ├─ Validates all 14 checkpoints present
+  ├─ Computes overall_pass = all(checkpoints PASS)
+  └─ Decision:
+       ├─ ALL PASS → Accept lesson
+       └─ ANY FAIL → Build revision instructions → loop back to Generator
+```
+
+### Bounded Revision Loop
+
+The system implements a **controlled retry mechanism** that prevents infinite loops:
+
+```
+Initial Generation (Attempt 0)
+       ↓
+   Evaluate
+       ↓
+    PASS? ───Yes──→ ✅ Accept & Return
+       │
+       No
+       ↓
+ Retries remaining? ───No──→ ❌ failed_quality_gate
+       │
+       Yes (max 2 retries)
+       ↓
+ Build targeted revision instructions:
+   • List failed checkpoint IDs
+   • Include evaluator's evidence
+   • Provide specific fixes
+   • Keep successful parts
+       ↓
+   Revision (Attempt 1 or 2)
+       ↓
+   Re-evaluate ALL checkpoints
+       ↓
+   [Loop back to PASS check]
+```
+
+**Key Features:**
+- **Maximum 3 total drafts** (initial + 2 revisions)
+- **Targeted feedback**: Only failed checkpoints trigger revisions
+- **Full re-evaluation**: Every revision is evaluated against all 14 checkpoints
+- **Preserved context**: Evaluator sees failed IDs + evidence from previous attempt
+- **Hard limits**: API rejects `max_retries > 2`, workflow clamps invalid values
 
 ---
 
 ## Architecture and Data Flow
 
 ```
-Client
-  │
-  ▼
-FastAPI + Pydantic (input validation, API key auth, prompt-injection check)
-  │
-  ▼
-LangGraph Workflow (bounded state machine)
-  │
-  ├── validate_request ──────────────────────────────────────────────┐
-  │                                                                    │
-  ├── create_lesson_plan  (Groq LLM, planner_v1.md prompt)           │
-  │                                                                    │
-  ├── generate_lesson  (Groq LLM, generator_v1.md prompt)            │ any
-  │                                                                    │ error
-  ├── evaluate_lesson  (Groq LLM, evaluator_v1.md prompt;             │ path
-  │      retries 429/5xx with bounded back-off)                       │
-  │                                                                    │
-  ├── validate_evaluation  (application logic, no LLM)               │
-  │                                                                    │
-  ├── decide_next_action  (routing: pass / retry / exhaust)          │
-  │       │                                                            │
-  │       ├─ PASS ──┐                                                 │
-  │       │          │                                                │
-  │       ├─ RETRY ► build_revision_instructions ──► generate_lesson  │
-  │       │           (loops back, max 2 retries)                     │
-  │       │                                                            │
-  │       └─ EXHAUSTED ─┐                                             │
-  │                      ▼                                            │
-  └──────────────► finalize_run  (sets status + final_lesson; ◄──────┘
-                        │          preserves last draft on error)
-                        ▼
-                   persist_results ──► return_result ──► END
-  │
-  ▼
-PostgreSQL  (generation_runs, lesson_drafts, evaluations, revision_logs,
-             improvement_candidates, configuration_versions)
-  │
-  ▼
-Prometheus metrics  /  OpenTelemetry traces  /  Structured JSON logs
+User/API Client
+      │
+      ▼
+FastAPI + Pydantic (input validation, API key auth, injection protection)
+      │
+      ▼
+LangGraph State Machine (bounded workflow with 10 nodes)
+      │
+      ├─1─→ validate_request ─────────────────────────────────────┐
+      │        • Validate topic, retries, constraints              │
+      │        • Initialize run_id and tracking fields             │
+      │                                                             │
+      ├─2─→ create_lesson_plan                                     │
+      │        • Agent: Planner (planner_v1.md)                    │
+      │        • Output: Structured lesson plan                    │
+      │                                                             │
+      ├─3─→ generate_lesson ◄────────────────────┐                │
+      │        • Agent: Generator (generator_v1.md)                │
+      │        • Initial draft OR targeted revision                │
+      │                                           │                │
+      ├─4─→ evaluate_lesson                       │                │
+      │        • Agent: Evaluator (evaluator_v1.md)                │
+      │        • Returns 14 checkpoint results                     │
+      │                                           │                │
+      ├─5─→ validate_evaluation                   │                │
+      │        • Application logic (NO LLM)       │                │
+      │        • Verifies all checkpoints present │                │
+      │        • Computes quality gate result     │                │
+      │                                           │                │
+      ├─6─→ decide_next_action                    │                │
+      │        • Routing decision point           │                │
+      │        ├─ ALL PASS → finalize_run         │                │
+      │        ├─ FAIL + retries remain → build_revision           │
+      │        └─ FAIL + no retries → finalize_run                │
+      │                                           │                │ 
+      ├─7─→ build_revision_instructions           │                │
+      │        • Extract failed checkpoint details                 │
+      │        • Build targeted fix instructions  │                │
+      │        • Increment attempt counter        │                │
+      │        • Loop back to generate_lesson ────┘                │
+      │                                                             │
+      ├─8─→ finalize_run  ◄───────────────────────────────────────┘
+      │        • Set final_status (passed / failed_quality_gate /  │
+      │          generation_error / evaluation_error)              │
+      │        • Preserve last draft on errors                     │
+      │        • Complete rejection log                            │
+      │                                                             │
+      ├─9─→ persist_results                                        │
+      │        • Save to database (SQLite or PostgreSQL)           │
+      │        • generation_runs, lesson_drafts, evaluations,      │
+      │          revision_logs tables                              │
+      │                                                             │
+      └─10→ return_result                                          │
+             • Terminal node                                       │
+             • Return to API                                       │
+      ↓
+API Response
+  • run_id, status, lesson, evaluation
+  • rejection_log (if revisions occurred)
+  • Full audit trail
+
+Observability Layer (runs in parallel)
+  ├─ Structured JSON logs (run_id, timestamps, errors)
+  ├─ Prometheus metrics (latency, pass rates, checkpoint failures)
+  └─ OpenTelemetry traces (distributed tracing)
 ```
 
 ### Key components
@@ -85,34 +264,256 @@ Prometheus metrics  /  OpenTelemetry traces  /  Structured JSON logs
 - A **Groq API key** — sign up at [console.groq.com](https://console.groq.com)
 - `psycopg[binary]` and `psycopg2-binary` (installed automatically)
 
----
-
 ## Installation and Setup
+
+### Prerequisites
+
+- **Python 3.11 or higher** (tested on Python 3.12)
+- **Git** for cloning the repository
+- **Groq API key** — sign up at [console.groq.com](https://console.groq.com) (free tier available)
+- Optional: **Docker** for PostgreSQL (or use SQLite for local development)
+
+### Quick Start (5 minutes)
 
 ```bash
 # 1. Clone the repository
-git clone <your-repo-url>
-cd lesson-content-generator
+git clone https://github.com/Subhradyuti/Lesson-Content-Generator.git
+cd Lesson-Content-Generator
 
 # 2. Create and activate a virtual environment
 python -m venv .venv
+
 # Windows PowerShell:
 .venv\Scripts\Activate.ps1
+
 # Linux/macOS:
 source .venv/bin/activate
 
-# 3. Install dependencies
-pip install --no-deps -e .
-pip install fastapi uvicorn pydantic pydantic-settings langchain langchain-core \
-    langchain-groq langgraph sqlalchemy alembic psycopg psycopg2-binary \
-    opentelemetry-api opentelemetry-sdk prometheus-client pyyaml httpx groq
+# 3. Install dependencies (one command installs everything)
+pip install -e .
 
-# Install dev dependencies
-pip install pytest pytest-asyncio pytest-cov ruff mypy types-PyYAML httpx
-
-# 4. Copy and edit environment file
+# 4. Configure environment variables
 cp .env.example .env
-# Edit .env and add your GROQ_API_KEY
+# Edit .env and add your GROQ_API_KEY (get it from console.groq.com)
+
+# 5. Initialize the database
+python -c "from app.db.session import init_db; init_db()"
+
+# 6. Start the server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**✅ The API is now running at http://localhost:8000**
+
+Open http://localhost:8000/docs in your browser to see the interactive API documentation (Swagger UI).
+
+---
+
+### Detailed Installation Steps
+
+#### 1. Clone and Navigate
+
+```bash
+git clone https://github.com/Subhradyuti/Lesson-Content-Generator.git
+cd Lesson-Content-Generator
+```
+
+#### 2. Set Up Python Virtual Environment
+
+```bash
+# Create virtual environment
+python -m venv .venv
+
+# Activate it
+# Windows PowerShell:
+.venv\Scripts\Activate.ps1
+
+# Windows Command Prompt:
+.venv\Scripts\activate.bat
+
+# Linux/macOS:
+source .venv/bin/activate
+```
+
+Verify Python version:
+```bash
+python --version  # Should show 3.11 or higher
+```
+
+#### 3. Install Dependencies
+
+The `pyproject.toml` file defines all dependencies. Install with:
+
+```bash
+# Install the package in editable mode (includes all dependencies)
+pip install -e .
+
+# Verify installation
+python -c "import fastapi, langchain, langgraph; print('✅ All dependencies installed')"
+```
+
+**Main dependencies installed:**
+- FastAPI 0.135.3 (API framework)
+- LangChain 0.3.14 (LLM integration)
+- LangGraph 0.2.60 (workflow orchestration)
+- Groq 0.37.1 (model provider SDK)
+- SQLAlchemy 2.0.36 (database ORM)
+- Pydantic 2.13.0 (data validation)
+
+**Optional dev dependencies:**
+```bash
+pip install -e ".[dev]"  # Installs pytest, ruff, mypy, coverage tools
+```
+
+#### 4. Configure Environment Variables
+
+Copy the example configuration and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+**Edit `.env` and set these critical values:**
+
+```bash
+# Required: Your Groq API key (get from console.groq.com)
+GROQ_API_KEY=your_groq_api_key_here
+
+# Model selection (Groq supports multiple models)
+GENERATOR_MODEL=openai/gpt-oss-120b    # or llama-3.3-70b-versatile
+EVALUATOR_MODEL=openai/gpt-oss-120b
+
+# Database (SQLite for local dev, PostgreSQL for production)
+DATABASE_URL=sqlite:///./lesson_generator.db
+
+# API security (optional for local development)
+API_KEY=your-secret-api-key-here
+
+# Application environment
+APP_ENV=development
+LOG_LEVEL=INFO
+```
+
+**Available Groq Models:**
+- `llama-3.3-70b-versatile` — Llama 3.3 70B (fast, good quality)
+- `llama-3.1-8b-instant` — Llama 3.1 8B (faster, lower quality)
+- `openai/gpt-oss-120b` — GPT-OSS 120B (best quality if available)
+
+Check [Groq's model documentation](https://console.groq.com/docs/models) for the latest available models.
+
+#### 5. Initialize the Database
+
+**Option A: SQLite (Default - No Setup Needed)**
+
+SQLite is the default and requires no server. The database file is created automatically on first run.
+
+```bash
+# The database will be created automatically when you start the server
+# Or initialize it manually:
+python -c "from app.db.session import init_db; init_db()"
+```
+
+**Option B: PostgreSQL (Production)**
+
+If using PostgreSQL, start it with Docker:
+
+```bash
+# Start PostgreSQL container
+docker compose up db -d
+
+# Update DATABASE_URL in .env:
+DATABASE_URL=postgresql+psycopg://lesson_user:lesson_pass@localhost:5432/lesson_db
+
+# Run migrations
+alembic upgrade head
+```
+
+**Verify database initialization:**
+```bash
+# Check that tables were created
+python -c "from app.db.models import Base; from app.db.session import engine; print([t.name for t in Base.metadata.sorted_tables])"
+```
+
+You should see: `['generation_runs', 'lesson_drafts', 'evaluations', 'revision_logs', 'improvement_candidates', 'configuration_versions']`
+
+#### 6. Start the API Server
+
+**Development mode (with auto-reload):**
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**Production mode:**
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+```
+
+**Using Docker (alternative):**
+```bash
+# Build and start both API and database
+docker compose up --build
+
+# The API will be available at http://localhost:8000
+```
+
+#### 7. Verify Installation
+
+Open your browser and navigate to:
+
+- **Swagger UI (Interactive API docs):** http://localhost:8000/docs
+- **Health check:** http://localhost:8000/health/live
+- **API version:** http://localhost:8000/
+
+You should see:
+```json
+{
+  "message": "Self-Evaluating Lesson Content Generator",
+  "version": "1.0.0",
+  "environment": "development"
+}
+```
+
+---
+
+### Troubleshooting Setup
+
+#### "No module named 'app'"
+```bash
+# Make sure you installed the package in editable mode
+pip install -e .
+```
+
+#### "GROQ_API_KEY not found"
+```bash
+# Verify .env file exists and contains GROQ_API_KEY
+cat .env | grep GROQ_API_KEY
+
+# The key should start with "gsk_"
+```
+
+#### Database connection errors (PostgreSQL)
+```bash
+# Check if PostgreSQL is running
+docker compose ps
+
+# Verify DATABASE_URL format:
+# postgresql+psycopg://user:password@host:port/database
+```
+
+#### Port 8000 already in use
+```bash
+# Use a different port
+uvicorn app.main:app --reload --port 8001
+
+# Or find and kill the process using port 8000
+# Windows: netsh http show servicestate
+# Linux/macOS: lsof -ti:8000 | xargs kill
+```
+
+#### Import errors for langchain/langgraph
+```bash
+# Reinstall with specific versions
+pip install --force-reinstall langchain==0.3.14 langgraph==0.2.60
 ```
 
 ---
@@ -225,7 +626,20 @@ All protected endpoints require the `X-API-Key` header. Click the **Authorize** 
 
 ---
 
-## Submitting a Lesson Generation Request
+## Usage Examples
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/lessons` | POST | Generate a new lesson |
+| `/v1/lessons/{run_id}` | GET | Get lesson status and result |
+| `/v1/lessons/{run_id}/history` | GET | Get full generation history (drafts + evaluations) |
+| `/health/live` | GET | Liveness check |
+| `/health/ready` | GET | Readiness check (includes DB status) |
+| `/docs` | GET | Interactive API documentation (Swagger UI) |
+
+### Submitting a Lesson Generation Request
 
 ### curl example
 
