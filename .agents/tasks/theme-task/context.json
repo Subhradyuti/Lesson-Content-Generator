@@ -1,0 +1,25 @@
+{
+  "project_type": "React 19 + TypeScript + Vite 7 + Tailwind v4 SPA frontend",
+  "language": "TypeScript / TSX",
+  "build_system": "Vite 7 with @tailwindcss/vite plugin. Tailwind v4 uses @theme directive in index.css — NO tailwind.config.js file exists. All design tokens are CSS custom properties defined in @theme block. Utility classes like bg-canvas, text-ink, border-line etc. are generated automatically from --color-* tokens in @theme.",
+  "test_framework": "None configured. Verification = TypeScript typecheck + Vite build.",
+  "build_command": "cd frontend && npm run build",
+  "test_command": "cd frontend && npm run typecheck",
+  "verification_instructions": "1. Run `cd frontend && npm run typecheck` — must produce zero errors. 2. Run `cd frontend && npm run build` — must complete with no errors. 3. Optional: run `npm run dev` and visually verify toggle appears in sidebar, both themes render, preference persists on reload.",
+  "snapshot_or_generated_files": null,
+  "environment_constraints": "Windows PowerShell workspace. Do NOT restart the dev server. All changes are inside frontend/src/ only. No backend files to touch. Tailwind v4 @theme tokens compile to --color-* CSS variables automatically — do not duplicate token names between @theme and a manual :root block; use [data-theme='light'] overrides instead for the light palette.",
+  "contribution_requirements": "Modify only frontend/ code. No backend changes. No new npm packages — lucide-react already has Sun and Moon icons. Use existing clsx, framer-motion, lucide-react patterns.",
+  "key_patterns": "1. Tailwind v4 @theme block in frontend/src/index.css defines all --color-* tokens. These compile to Tailwind utility classes (bg-canvas, text-ink, border-line, etc.). 2. Components use semantic token classes: bg-canvas, bg-surface, bg-raised, bg-elevated, bg-sunken, text-ink, text-muted, text-faint, border-line. 3. Semantic colors (pass, fail, warn, info + their -dim variants) remain constant across themes — only the background/text/border surface palette changes. 4. Hardcoded dark values appear in: Layout.tsx (bg-black/60 overlay), Toast.tsx (shadow-black/50), RetryDiagram.tsx (ring-offset-canvas), ErrorBoundary.tsx (bg-fail/15). 5. Special utilities: .md-body in index.css uses text-white for strong elements — needs light-mode override. 6. The @utility text-gradient, bg-grid, shimmer-bg blocks must stay working in both themes.",
+  "relevant_files": [
+    "frontend/src/index.css",
+    "frontend/src/main.tsx",
+    "frontend/src/components/Layout.tsx",
+    "frontend/src/components/Toast.tsx",
+    "frontend/src/components/RetryDiagram.tsx",
+    "frontend/src/components/ErrorBoundary.tsx",
+    "frontend/src/components/Markdown.tsx",
+    "frontend/src/components/ThemeContext.tsx (CREATE)",
+    "frontend/src/components/ThemeToggle.tsx (CREATE)"
+  ],
+  "directory_structure": "frontend/src/components/ — all reusable components. frontend/src/pages/ — Dashboard, Generate, History, NotFound, RunDetail. frontend/src/lib/ — api, config, recentRuns, types, utils. frontend/src/context/ — does NOT yet exist; ThemeContext goes here. frontend/src/index.css — all Tailwind v4 theme tokens and component layer classes. frontend/src/main.tsx — app entry, wraps everything in StrictMode+ErrorBoundary+BrowserRouter."
+}

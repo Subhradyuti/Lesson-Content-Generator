@@ -1,0 +1,44 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Fix the handful of hardcoded dark-only styles that would look wrong in light mode. All semantic token classes (bg-canvas, bg-surface, text-ink, etc.) already adapt automatically through the CSS variable overrides from FEAT-001. Only a small number of hardcoded dark-specific values need patching. FEAT-002 is independent of FEAT-001 only in authoring order — it MUST be implemented after FEAT-001 is complete so the light theme is active for testing. The files are listed below with the exact changes needed.",
+  "status": "pending",
+  "steps": [
+    "STEP 1 — frontend/src/components/Layout.tsx: The sidebar overlay uses `bg-black/60` for the mobile backdrop. In light mode this is still acceptable (it dims the content behind the sidebar), but for full theme correctness change it to `bg-canvas/60 backdrop-blur-sm` which will be dark in dark mode and light-tinted in light mode. If the designer prefers a consistently dark scrim, leave bg-black/60 as-is — it is an overlay and both modes look fine. Decision: keep bg-black/60 unchanged — it is intentionally a dark translucent scrim in both modes. No change needed here.",
+
+    "STEP 2 — frontend/src/components/Toast.tsx: The toast card has `shadow-2xl shadow-black/50`. In light mode this shadow is still visible but is a deep black — acceptable for a floating notification. No functional breakage. However, to be theme-aware, change to `shadow-2xl shadow-ink/20` so the shadow uses the theme ink color. Change: `shadow-2xl shadow-black/50` → `shadow-2xl shadow-ink/20`.",
+
+    "STEP 3 — frontend/src/components/RetryDiagram.tsx: The selected draft button uses `ring-offset-canvas` which is a Tailwind utility derived from --color-canvas. This already adapts to the theme correctly because the CSS variable changes. No change needed.",
+
+    "STEP 4 — frontend/src/components/ErrorBoundary.tsx: Uses `bg-fail/15` which Tailwind computes from --color-fail — this is a semantic color that does not change between themes. No issue. Uses `bg-canvas` on the outer wrapper which adapts correctly. No changes needed.",
+
+    "STEP 5 — frontend/src/index.css .md-body strong: ALREADY HANDLED IN FEAT-001 STEP 1. The change from `text-white` to `text-ink` must be applied in FEAT-001. This step is a reminder to verify it was done.",
+
+    "STEP 6 — frontend/src/index.css @layer base scrollbar: The scrollbar uses hardcoded hex `#262f44`. Add a [data-theme='light'] override for scrollbar-color. ALREADY COVERED IN FEAT-001 STEP 1. Verify the scrollbar override block was added.",
+
+    "STEP 7 — frontend/src/components/Layout.tsx ambient background blobs: The radial gradient blobs use `rgba(124,139,255,0.16)` and `rgba(154,107,255,0.10)`. In light mode these purple glows can be subtle and attractive. For the light theme, reduce opacity. Add a CSS class or use a data-theme selector to adjust. Implementation: wrap the blob divs or leave their opacity. Decision: the blobs are barely visible at those opacities even in dark mode, and will be essentially invisible in light mode. Leave them as-is — they don't break the light theme.",
+
+    "STEP 8 — frontend/src/index.css @utility bg-grid: Uses `rgba(124, 139, 255, 0.045)` for the subtle grid lines. In light mode this tint on a white background is nearly invisible. This is acceptable. No change needed.",
+
+    "STEP 9 — frontend/src/components/Generate.tsx inline spinner: The running state spinner uses `border-white/40 border-t-white`. This is inside a btn-primary (dark gradient background) so white is always correct regardless of theme. No change needed.",
+
+    "STEP 10 — frontend/src/pages/Dashboard.tsx: The track-by-ID panel uses `bg-raised/60` with `border-accent/20` and the shimmer skeleton uses `shimmer-bg animate-shimmer`. The shimmer-bg utility uses `rgba(148, 163, 184, 0.08)` which is a neutral gray — works fine in both themes. The `bg-raised/60` adapts via CSS variable. No changes needed.",
+
+    "STEP 11 — frontend/src/components/Layout.tsx sidebar bg: The sidebar uses `bg-sunken/90`. In light mode --color-sunken becomes #f0f2f7 which gives a slightly off-white sidebar. This is intentional — differentiates sidebar from main content. The main bg-canvas becomes #f8f9fc. This contrast is good. No changes needed.",
+
+    "STEP 12 — FINAL VERIFICATION: After applying all changes from FEAT-001 and these steps, confirm: (a) `npm run typecheck` passes, (b) `npm run build` passes, (c) the sun/moon toggle is visible in both the mobile header and the sidebar desktop footer, (d) clicking the toggle adds/removes data-theme='light' on <html>."
+  ],
+  "acceptance_criteria": [
+    "Running `cd frontend && npm run typecheck` produces zero TypeScript errors",
+    "Running `cd frontend && npm run build` completes successfully",
+    "Toast shadow class is `shadow-ink/20` not `shadow-black/50`",
+    "All surface token classes (bg-canvas, bg-surface, bg-raised, bg-elevated, bg-sunken, text-ink, text-muted, text-faint, border-line) adapt correctly via CSS variables — no hardcoded dark colors remain that would look broken in light mode",
+    "The .md-body strong rule uses text-ink not text-white"
+  ],
+  "verification": [
+    "cd frontend && npm run typecheck",
+    "cd frontend && npm run build"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

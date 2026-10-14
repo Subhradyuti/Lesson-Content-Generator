@@ -1,0 +1,7 @@
+{
+  "task_id": "task-theme-light-dark",
+  "task_description": "Add a seamless, persistent, accessible light/dark theme toggle to the entire React+Tailwind v4 frontend. The app currently has a dark-only design. We need CSS variable overrides for a white light theme, a ThemeContext with localStorage persistence + system preference detection, a ThemeToggle button in the sidebar, and application of the theme on the document root element.",
+  "status": "pending",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}
